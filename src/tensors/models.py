@@ -61,3 +61,23 @@ def create_nn_model(features):
     outputs = Dense(1,activation="sigmoid")(layer)
 
     return Model(inputs=inputs,outputs=outputs)
+
+def create_guided_model(model):
+    @tf.custom_gradient
+    def guided_relu(x):
+        def grad(dy):
+            return tf.cast(dy > 0, dtype=tf.float32) * tf.cast(x > 0, dtype=tf.float32) * dy
+        return tf.nn.relu(x), grad
+
+    def modify_relu(layer):
+        if isinstance(layer, tf.keras.layers.ReLU):
+            return tf.keras.layers.Activation(guided_relu)
+        return layer
+
+    guided_model = tf.keras.models.clone_model(
+        model,
+        clone_function=modify_relu
+    )
+    guided_model.set_weights(model.get_weights())
+
+    return guided_model
