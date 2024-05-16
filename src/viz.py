@@ -7,6 +7,9 @@ from sklearn.metrics import f1_score,roc_auc_score,accuracy_score
 import numpy as np
 
 import tensorflow as tf
+from tensorflow.keras.metrics import AUC,Accuracy
+
+from src.tensors.metrics import F1Score
 
 def visualize_data(X,y):
     cmap = ["red","blue"]
@@ -51,7 +54,16 @@ def show_stats(model,X,y):
     auc = np.dot(X,model.coef_.T)
     print(f"AUC: {roc_auc_score(y,auc):.4%}")
 
-def show_history(history):
+def show_tensor_stats(y_true,y_pred):
+    metric_names = ["Accuracy","AUC","F1 Score"]
+    metrics = [Accuracy(),AUC(),F1Score()]
+    for m in metrics:
+        m.update_state(y_true,y_pred)
+    
+    for n,m in zip(metric_names,metrics):
+        print(f"{n}: {m.result():.4%}")
+
+def show_history(history,val=True):
     metrics = ["Accuracy","F1_score","AUC","Loss"]
 
     fig, axs = plt.subplots(len(metrics), 1,figsize=(10, 8))
@@ -63,9 +75,16 @@ def show_history(history):
         xy = history.history[metric.lower()]
 
         ax.plot(xy, label=metric)
-        ax.plot(xy, label=metric)
+
+        if val:
+            val_metric = f"val_{metric.lower()}"
+
+            xy = history.history[val_metric]
+
+            ax.plot(xy, label=val_metric)
         ax.set_xlabel('Epoch')
         ax.set_ylabel(metric)
+        ax.legend()
 
 def show_monotone_blocks(uta,features):
 
@@ -84,3 +103,38 @@ def show_monotone_blocks(uta,features):
 def show_criteria_weights(uta_model):
     for i,weight in enumerate(uta_model.uta.get_layer("criteria_weights").get_weights()[0]):
         print("Weight of criterion",i,":",weight[0])
+
+def plot_density(X_train: np.ndarray, y_train: np.ndarray, criterion_1: int, criterion_2: int,weights,intercept, samples: int = 10000) -> None:
+    """Plot the density of the training data and the decision boundary. Plots only pairs of criteria criterion_1 and criterion_2. 
+
+    Args:
+        X_train (np.ndarray): Input features of the training data.
+        y_train (np.ndarray): Target variable of the training data.
+        criterion_1 (int): The index of the first criterion.
+        criterion_2 (int): The index of the second criterion.
+        samples (int, optional): The number of samples to plot. Defaults to 10000.
+
+    """
+    color = {-1:"red",1:"green"}
+    for c in range(-1,1,2):
+        x = np.sort(np.unique(X_train[y_train==c,criterion_1]))
+        y = np.sort(np.unique(X_train[y_train==c,criterion_2]))
+
+        z = np.zeros((len(x),len(y)))
+        for i,x_i in enumerate(x):
+            sub_x = X_train[:,criterion_1]==x_i
+            for j,y_j in enumerate(y):
+                sub_y = X_train[:,criterion_2]==y_j
+                z[i,j] = np.sum(np.logical_and(sub_x,sub_y))
+
+        plt.contour(x,y,z,alpha=0.5,color=color[c])
+
+    x_points = np.linspace(-1, 1)
+    y_points = -(weights[criterion_1] / weights[criterion_2]) * x_points - intercept / weights[criterion_2]
+    fltr = np.logical_and(y_points < 1, y_points > -1)
+    x_points = x_points[fltr]
+    y_points = y_points[fltr]
+    plt.plot(x_points, y_points, color="blue")
+    
+    plt.xlabel(f"Criterion: {criterion_1}")
+    plt.ylabel(f"Criterion: {criterion_2}")
