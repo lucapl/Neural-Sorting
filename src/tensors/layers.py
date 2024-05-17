@@ -21,16 +21,18 @@ class MonotoneBlock(Layer):
     def build(self, input_shape):
         self.sigmoids = [Dense(self.units,
                                activation=Activation(leaky_hard_sigmoid),
-                               kernel_constraint=NonNeg()) for _ in range(self.branches)] # the y and bias for each x
+                               kernel_constraint=NonNeg(),bias_constraint=NonNeg()) for _ in range(self.branches)] # the y and bias for each x
         for sig in self.sigmoids:
             sig.build(input_shape)
         #self.sigmoids = Concatenate(axis=2)([sigs])
+        self.concat = Concatenate()
         self.linear = Dense(self.units,activation=None,use_bias=False,kernel_constraint=NonNeg()) # alphas of each branch
         self.linear.build((None,self.branches*self.units))
         super(MonotoneBlock, self).build(input_shape)
 
     def call(self, inputs):
-        x = K.concatenate([sig(inputs) for sig in self.sigmoids],axis=-1)
+        #x = tf.math.reduce_sum([sig(inputs) for sig in self.sigmoids],axis=0)
+        x = self.concat([sig(inputs) for sig in self.sigmoids])
         x = self.linear(x)
         return x
     
