@@ -1,6 +1,6 @@
 from tensorflow.keras import backend as K
 
-delta = 0.1
+delta = 0.01
 def leaky_hard_sigmoid(x):
     return K.switch(x < 0, 
                     x*delta, 

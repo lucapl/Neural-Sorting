@@ -41,7 +41,7 @@ def create_ann_utadis_model(threshold,ideal_alt,anti_ideal_alt,n_labels,n_criter
     monotones = [MonotoneBlock(branches=L,name=f"monotone_block_{i}")(split) for i,split in enumerate(splits)]
     
     concat = Concatenate(axis=1)(monotones)
-    linear = Dense(1,activation=None,name="criteria_weights",use_bias=False)(concat)
+    linear = Dense(1,activation=None,name="criteria_weights",use_bias=False,kernel_constraint=NonNeg())(concat)
     #norm = Dense(4,activation="sigmoid")(linear)
 
     #norm = MinMaxNormalization()(linear)
