@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import Input,Model
 from tensorflow.keras.layers import Dense, Activation, Layer, Concatenate, Lambda, Normalization
-from tensorflow.keras.constraints import NonNeg
+from tensorflow.keras.constraints import NonNeg,MinMaxNorm
 
 from src.tensors.layers import Thresholder,MonotoneBlock
 
@@ -23,7 +23,7 @@ class NormModel(tf.keras.Model):
 
         return self.thresholdLayer((out - _min) / (_max - _min))
 
-def create_ann_utadis_model(threshold,ideal_alt,anti_ideal_alt,n_labels,n_criteria,L=3):
+def create_ann_utadis_model(threshold,ideal_alt,anti_ideal_alt,n_labels,n_criteria,L=3,allow_neg_weights=False):
     inputs = Input(shape=(n_criteria,))
     #ideal_layer = Lambda(lambda x: tf.reshape(tf.constant(ideal_alt),(1,-1)))(inputs)
     #anti_ideal_layer = Lambda(lambda x: tf.reshape(tf.constant(anti_ideal_alt),(1,-1)))(inputs)
@@ -36,12 +36,15 @@ def create_ann_utadis_model(threshold,ideal_alt,anti_ideal_alt,n_labels,n_criter
     
     #split_layer = Lambda(splitter)(inputs)
 
-    splits = [Lambda(lambda x: x[:, i:i+1],name=f"criteria_{i}")(inputs) for i in range(n_criteria)]
+    splits = [Lambda((lambda i: lambda x: x[:, i:i+1])(i),name=f"criteria_{i}")(inputs) for i in range(n_criteria)]
 
     monotones = [MonotoneBlock(branches=L,name=f"monotone_block_{i}")(split) for i,split in enumerate(splits)]
     
     concat = Concatenate(axis=1)(monotones)
-    linear = Dense(1,activation=None,name="criteria_weights",use_bias=False,kernel_constraint=NonNeg())(concat)
+    linear = Dense(1,activation=None,
+                   name="criteria_weights",
+                   use_bias=False,
+                   kernel_constraint=NonNeg())(concat)
     #norm = Dense(4,activation="sigmoid")(linear)
 
     #norm = MinMaxNormalization()(linear)

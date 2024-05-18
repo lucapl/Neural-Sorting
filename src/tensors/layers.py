@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import Input,Model
 from tensorflow.keras.layers import Dense, Activation, Layer, Concatenate, Lambda, Normalization
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.constraints import NonNeg
+from tensorflow.keras.constraints import NonNeg,MinMaxNorm
 from tensorflow.keras import backend as K
 
 from src.tensors.activations import leaky_hard_sigmoid
