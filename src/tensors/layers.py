@@ -3,6 +3,7 @@ from tensorflow.keras import Input,Model
 from tensorflow.keras.layers import Dense, Activation, Layer, Concatenate, Lambda, Normalization
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.constraints import NonNeg,MinMaxNorm
+from tensorflow.keras.initializers import RandomUniform 
 from tensorflow.keras import backend as K
 
 from src.tensors.activations import leaky_hard_sigmoid
@@ -21,12 +22,16 @@ class MonotoneBlock(Layer):
     def build(self, input_shape):
         self.sigmoids = [Dense(self.units,
                                activation=Activation(leaky_hard_sigmoid),
-                               kernel_constraint=NonNeg(),bias_constraint=NonNeg()) for _ in range(self.branches)] # the y and bias for each x
+                               kernel_constraint=NonNeg(),
+                               bias_constraint=NonNeg(),
+                               kernel_initializer=RandomUniform(minval=1.0, maxval=10.0)) for _ in range(self.branches)] # the y and bias for each x
         for sig in self.sigmoids:
             sig.build(input_shape)
-        #self.sigmoids = Concatenate(axis=2)([sigs])
         self.concat = Concatenate()
-        self.linear = Dense(self.units,activation=None,use_bias=False,kernel_constraint=NonNeg()) # alphas of each branch
+        self.linear = Dense(self.units,
+                            activation=None,
+                            use_bias=False,
+                            kernel_constraint=NonNeg()) # alphas of each branch
         self.linear.build((None,self.branches*self.units))
         super(MonotoneBlock, self).build(input_shape)
 

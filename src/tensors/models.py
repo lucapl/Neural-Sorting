@@ -41,10 +41,16 @@ def create_ann_utadis_model(threshold,ideal_alt,anti_ideal_alt,n_labels,n_criter
     monotones = [MonotoneBlock(branches=L,name=f"monotone_block_{i}")(split) for i,split in enumerate(splits)]
     
     concat = Concatenate(axis=1)(monotones)
+
+    def weight_init(shape,dtype=None):
+        weights = tf.keras.random.uniform(shape,dtype=dtype)
+        return weights/tf.math.reduce_sum(weights)
+
     linear = Dense(1,activation=None,
                    name="criteria_weights",
                    use_bias=False,
-                   kernel_constraint=NonNeg())(concat)
+                   kernel_constraint=NonNeg(),
+                   kernel_initializer=weight_init)(concat)
     #norm = Dense(4,activation="sigmoid")(linear)
 
     #norm = MinMaxNormalization()(linear)
